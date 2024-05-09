@@ -36,7 +36,7 @@ public class Client
                   int peerRcvPortNum) throws Exception
     {
         rdt = new RDT(ipAddress, rcvPortNum, peerRcvPortNum, "");
-        Thread.sleep(100); // Sleep for 0.1 second
+        Thread.sleep(100); 
     }// constructor
 
     /**
@@ -53,32 +53,34 @@ public class Client
      * 3) close the frame before exiting the program.
      */
     public void run() throws Exception
-    {// Send file request
-        A5.print("", "CLIENT sent file request");
-        sendFileRequest();
+    {
+        sendFileRequest(); // Send initial request for an image file
 
-        // Get file name
-        if (getFileName()) {
-            A5.print("", "CLIENT got file name: " + fileName);
+        if (getFileName()) { // If a file name was received
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            boolean done = false;
+            while (!done) {
+                byte[] msg = rdt.receiveData();
+                switch (msg[0]) {
+                    case A5.MSG_FILE_DATA:
+                        // Append data to ByteArrayOutputStream
+                        out.write(msg, 1, msg.length - 1);
+                        A5.print("", "CLIENT received file chunk of " + (msg.length - 1) + " bytes");
+                        break;
+                    case A5.MSG_FILE_DONE:
+                        A5.print("", "CLIENT received file done message");
+                        displayImage(out.toByteArray());
+                        Thread.sleep(2000); 
+                        frame.setVisible(false);
+                        frame.dispose();
+                        done = true;
+                        System.exit(0);
+                }
+            }
         } else {
-            A5.print("", "CLIENT error: Failed to get file name");
-            return;
+            A5.print("", "CLIENT no image file available");
+            return; // Exit if no image file is available
         }
-
-        // Receive file data
-        byte[] fileData = rdt.receiveData();
-
-        // Display the image
-        displayImage(fileData);
-
-        // Sleep for two seconds
-        Thread.sleep(2000);
-
-        // Close the frame
-        frame.dispose();
-
-        // Shutdown
-        A5.print("", "CLIENT done");
     }// run
 
     // Do not modify this method
@@ -128,9 +130,8 @@ public class Client
      */
     private void sendFileRequest()
     {
-        // Prepare and send file request message
-        byte[] requestMsg = "MSG_REQUEST_IMG_FILE".getBytes();
-        rdt.sendData(requestMsg);
+        rdt.sendData(new byte[]{A5.MSG_REQUEST_IMG_FILE});
+        A5.print("", "CLIENT sent file request");
     }// sendFileRequest
 
     /**
@@ -140,17 +141,14 @@ public class Client
      */    
     private boolean getFileName()
     {
-       // Receive file name message
-       byte[] fileNameMsg = rdt.receiveData();
-       String msg = new String(fileNameMsg);
-       if (msg.startsWith("MSG_FILE_NAME")) {
-           // Extract file name from message
-           String[] parts = msg.split(" ");
-           fileName = parts[1];
-           return true;
-       } else {
-           return false;
-       }
-    }
+        byte[] msg = rdt.receiveData();
+        if (msg[0] == A5.MSG_FILE_NAME) {
+            fileName = new String(msg, 1, msg.length - 1);
+            A5.print("", "CLIENT got file name: " + fileName);
+            return true;
+        }
+        A5.print("", "CLIENT no image file available");
+        return false;
+    }// getFileName
 
 }// Client

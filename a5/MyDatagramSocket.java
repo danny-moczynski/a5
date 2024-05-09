@@ -24,7 +24,7 @@ import java.util.Random;
  */
 public class MyDatagramSocket extends DatagramSocket
 {
-    private static final int DEFAULT_ONE_OUT_OF = 10;
+    private static final int DEFAULT_ONE_OUT_OF = 0;
     private              int dropOneOutOf       = DEFAULT_ONE_OUT_OF;
     private              int corruptOneOutOf    = DEFAULT_ONE_OUT_OF;
     private              Random rand;
